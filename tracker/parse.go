@@ -27,19 +27,31 @@ func parseConnectionResponse(res []byte, sentTransactionID uint32) (uint64, erro
 }
 
 func parseAnnounceResponse(res []byte, sentTransactionID uint32) ([]string, uint32, uint32, uint32, error) {
-	if len(res) < 20 {
+	if len(res) < 8 {
 		return nil, 0, 0, 0, fmt.Errorf("[ERROR] invalid response length: %d", len(res))
 	}
 
 	action := binary.BigEndian.Uint32(res[0:4])
 	transactionID := binary.BigEndian.Uint32(res[4:8])
 
+	if transactionID != sentTransactionID {
+		return nil, 0, 0, 0, fmt.Errorf("[ERROR] transaction ID mismatch: got %d, expected %d", transactionID, sentTransactionID)
+	}
+
+	if action == 3 {
+		errMsg := ""
+		if len(res) > 8 {
+			errMsg = string(res[8:])
+		}
+		return nil, 0, 0, 0, fmt.Errorf("[TRACKER ERROR] %s", errMsg)
+	}
+
 	if action != 1 {
 		return nil, 0, 0, 0, fmt.Errorf("[ERROR] invalid action code: %d", action)
 	}
 
-	if transactionID != sentTransactionID {
-		return nil, 0, 0, 0, fmt.Errorf("[ERROR] transaction ID mismatch: got %d, expected %d", transactionID, sentTransactionID)
+	if len(res) < 20 {
+		return nil, 0, 0, 0, fmt.Errorf("[ERROR] invalid announce response length: %d", len(res))
 	}
 
 	interval := binary.BigEndian.Uint32(res[8:12])

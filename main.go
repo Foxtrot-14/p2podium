@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Foxtrot-14/p2podium/dht"
 	"github.com/Foxtrot-14/p2podium/magnet"
-	"github.com/Foxtrot-14/p2podium/tracker"
+	_ "github.com/Foxtrot-14/p2podium/tracker"
 )
 
 var (
@@ -82,8 +83,8 @@ func main() {
 
 	// TODO: Obtain magnet link from user input
 	// Example magnet link for testing
+	//sample := "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fbig-buck-bunny.torrent"
 	sample := "magnet:?xt=urn:btih:EA71F8020C11A3677C7C4C17611622C029FF5CB8&dn=Jaws%20(1975)%201080p%20BrRip%20x264%20-%20YIFY&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Fpublic.popcorn-tracker.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce"
-
 	m, err := magnet.ParseMagnet(sample)
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to parse magnet link: %s", err)
@@ -98,18 +99,36 @@ func main() {
 	// - If the file does not exist, create a new DHT instance and call JoinDHT
 	// Note: If no peers are retrieved from the DHT, fallback to querying the UDP trackers
 
-	t := &tracker.Tracker{
-		PeerID:   tracker.GeneratePeerID(),
-		InfoHash: m.InfoHash,
-		Trackers: m.Trackers,
+	nodeID, err := dht.GenerateNodeID()
+	if err != nil {
+		log.Printf("[ERROR] %v", err)
+	}
+	var infoHash [20]byte
+	copy(infoHash[:], []byte(m.InfoHash))
+
+	dht := &dht.DHT{
+		NodeID:   nodeID,
+		InfoHash: infoHash,
 		Peers:    PeerList,
 		PeerLock: &PeerLock,
 		Done:     Done,
 		Errc:     Errc,
 	}
 
+	dht.JoinDHT()
+
+	// t := &tracker.Tracker{
+	// 	PeerID:   tracker.GeneratePeerID(),
+	// 	InfoHash: m.InfoHash,
+	// 	Trackers: m.Trackers,
+	// 	Peers:    PeerList,
+	// 	PeerLock: &PeerLock,
+	// 	Done:     Done,
+	// 	Errc:     Errc,
+	// }
+
 	// Start the tracker peer updater in a separate goroutine
-	go t.GetPeerList()
+	// go t.GetPeerList()
 
 	// Wait for either an interrupt signal or a fatal error
 	select {
@@ -124,4 +143,3 @@ func main() {
 	time.Sleep(1 * time.Second)
 	log.Println("[INFO] Exiting.")
 }
-

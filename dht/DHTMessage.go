@@ -8,3 +8,8 @@ type DHTMessage struct {
 	R map[string]any `bencode:"r,omitempty"`
 	E []any          `bencode:"e,omitempty"`
 }
+
+/*
+T = transactionID ()
+Y = (q(query) || r(response) || e(error))
+*/

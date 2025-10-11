@@ -1,11 +1,12 @@
 package tracker
 
 import (
+	"fmt"
+	"log"
 	"net"
 	"net/url"
-	"time"
-	"fmt"
 	"strings"
+	"time"
 )
 
 func (t *Tracker) sendAnnounceRequest() {
@@ -14,7 +15,7 @@ func (t *Tracker) sendAnnounceRequest() {
 		return
 	}
 
-	rawURL := t.Trackers[t.TrackerIdx-1]
+	rawURL := t.Trackers[(t.TrackerIdx-1+len(t.Trackers))%len(t.Trackers)]
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		t.Errc <- fmt.Errorf("invalid tracker URL %v: %w", rawURL, err)
@@ -47,6 +48,16 @@ func (t *Tracker) sendAnnounceRequest() {
 	buf := make([]byte, 2048)
 	n, err := conn.Read(buf)
 	if err != nil {
+		if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			log.Printf("[WARN] Tracker %v read timeout: %v", addr, err)
+			return
+		}
+		if opErr, ok := err.(*net.OpError); ok {
+			if strings.Contains(opErr.Err.Error(), "connection refused") {
+				log.Printf("[WARN] Tracker %v connection refused", addr)
+				return
+			}
+		}
 		t.Errc <- err
 		return
 	}

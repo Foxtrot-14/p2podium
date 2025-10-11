@@ -24,9 +24,6 @@ func (t *Tracker) sendConnectionRequest() {
 		return
 	}
 
-	// tracker = strings.TrimPrefix(tracker, "udp://")
-	// tracker = strings.TrimSuffix(tracker, "/announce")
-
 	host, err := url.Parse(tracker)
 	if err != nil {
 		t.Errc <- err
@@ -34,8 +31,9 @@ func (t *Tracker) sendConnectionRequest() {
 	}
 
 	hostPort := host.Host
-	if !strings.Contains(hostPort, ":") {
-		hostPort += ":6969"
+	if hostPort == "" {
+		t.Errc <- fmt.Errorf("invalid tracker URL: %v", tracker)
+		return
 	}
 
 	addr, err := net.ResolveUDPAddr("udp", hostPort)
@@ -58,8 +56,6 @@ func (t *Tracker) sendConnectionRequest() {
 		return
 	}
 
-	log.Printf("[DEBUG] wrote %v to %v", payload, tracker)
-
 	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
@@ -68,13 +64,17 @@ func (t *Tracker) sendConnectionRequest() {
 			log.Printf("[WARN] Tracker %v read timeout: %v", tracker, err)
 			t.TrackerIdx = (idx + 1) % len(t.Trackers)
 			return
-		} else {
-			t.Errc <- err
-			return
 		}
+		if opErr, ok := err.(*net.OpError); ok {
+			if strings.Contains(opErr.Err.Error(), "connection refused") {
+				log.Printf("[WARN] Tracker %v connection refused", tracker)
+				t.TrackerIdx = (idx + 1) % len(t.Trackers)
+				return
+			}
+		}
+		t.Errc <- err
+		return
 	}
-
-	log.Printf("[DEBUG] received %v from %v", buf[:n], tracker)
 
 	connectionID, err := parseConnectionResponse(buf[:n], t.TransactionID)
 	if err != nil {
@@ -85,4 +85,5 @@ func (t *Tracker) sendConnectionRequest() {
 	t.ConnectionID = connectionID
 	t.ConnectionIDTime = time.Now().Add(60 * time.Second)
 	t.TrackerIdx = (idx + 1) % len(t.Trackers)
+	return
 }

@@ -13,11 +13,11 @@ func connectionRequestPayload(transactionID uint32) []byte {
 	}
 
 	var buf bytes.Buffer
-	
+
 	binary.Write(&buf, binary.BigEndian, req.ProtocolID)
 	binary.Write(&buf, binary.BigEndian, req.Action)
 	binary.Write(&buf, binary.BigEndian, req.TransactionID)
-	
+
 	return buf.Bytes()
 }
 
@@ -58,4 +58,3 @@ func announceRequestPayload(connectionID uint64, transactionID uint32, infoHashS
 
 	return buf.Bytes()
 }
-

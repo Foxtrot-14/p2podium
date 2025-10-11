@@ -73,5 +73,3 @@ func TestParseMagnet(t *testing.T) {
 		})
 	}
 }
-
-

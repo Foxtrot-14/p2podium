@@ -24,6 +24,7 @@ type KBucket struct {
 
 type RoutingTable struct {
 	Buckets map[int]*KBucket
+	Peers   map[string][]string
 	mu      sync.Mutex
 }
 
@@ -32,7 +33,7 @@ type DHT struct {
 	Table    *RoutingTable
 	InfoHash [20]byte
 	Peers    []string
-	PeerLock sync.Mutex
+	PeerLock *sync.Mutex
 	Done     chan struct{}
 	Errc     chan error
 }
