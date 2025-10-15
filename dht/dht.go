@@ -1,31 +1,30 @@
 package dht
 
 import (
+	"net"
 	"sync"
 	"time"
 )
 
 type PeerRetriever interface {
-	GetPeerList() //Gateway into the package
-	AnnouncePresence()
-	Repopulate() //Should re-populate the DHT
+	JoinDHT()
+	GetPeerList()      //Gateway into the package
+	AnnouncePresence() //AnnouncePresence
+	ListenKRPC()       //A thread to listen for KRPC
+	HealthChecks()     //Periodically check nodes
 }
 
 type Node struct {
 	NodeID   [20]byte
-	Address  string
+	Address  net.IP
+	Port	 uint16
 	LastSeen time.Time
 }
 
-type KBucket struct {
-	Nodes []Node
-	mu    sync.Mutex
-}
-
 type RoutingTable struct {
-	Buckets map[int]*KBucket
-	Peers   map[string][]string
-	mu      sync.Mutex
+	Buckets   map[int][]Node
+	Peers     map[[20]byte][]string
+	TableLock *sync.Mutex
 }
 
 type DHT struct {

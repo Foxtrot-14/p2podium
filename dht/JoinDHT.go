@@ -2,18 +2,15 @@ package dht
 
 import (
 	"bytes"
-	"fmt"
-	bencode "github.com/jackpal/bencode-go"
+	"encoding/binary"
 	"log"
 	"net"
 	"time"
+
+	bencode "github.com/jackpal/bencode-go"
 )
 
 func (d *DHT) JoinDHT() {
-	fmt.Printf("[INFO] Joining DHT network...\n")
-	fmt.Printf("[INFO] NodeID: %x\n", d.NodeID)
-	fmt.Printf("[INFO] InfoHash: %x\n", d.InfoHash)
-
 	bootstrapNodes := []string{
 		"dht.libtorrent.org:25401",
 		"router.bittorrent.com:6881",
@@ -22,12 +19,13 @@ func (d *DHT) JoinDHT() {
 	}
 
 	for _, node := range bootstrapNodes {
-		msg := DHTMessage{
+		msg := DHTRequest{
 			T: generateTransactionID(),
 			Y: "q",
-			Q: "ping",
-			A: map[string]any{
-				"id": string(d.NodeID[:]),
+			Q: "find_node",
+			A: map[string][]byte{
+				"id":     d.NodeID[:],
+				"target": d.NodeID[:],
 			},
 		}
 
@@ -57,9 +55,7 @@ func (d *DHT) JoinDHT() {
 			continue
 		}
 
-		log.Printf("[INFO] Sent ping to %s", node)
-
-		conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		resp := make([]byte, 2048)
 		n, addr, err := conn.ReadFromUDP(resp)
 		if err != nil {
@@ -69,12 +65,29 @@ func (d *DHT) JoinDHT() {
 
 		dhtRes, err := parseJoinDHTResponse(resp[:n])
 		if err != nil {
-			log.Printf("[ERROR] error while formatting reponse %s", err.Error())
+			log.Printf("[ERROR] error while formatting response %s from %s", err.Error(), addr)
 			continue
 		}
 
-		log.Printf("[RECV] recevied message: %v\n from %v", dhtRes, addr)
+		nodes := []byte(dhtRes.R.Nodes)
+		for i := 0; i <= len(nodes); i += 26 {
+			var nodeID [20]byte
+			copy(nodeID[:], nodes[i:i+20])
+			bucketNumber, err := GetBucketNumber(nodeID[:], d.NodeID[:])
+			if err != nil {
+				log.Printf("[ERROR] error while calculating bucket number %s", err.Error())
+				continue
+			}
+			ip := net.IP(nodes[i+20 : i+24])
+			port := binary.BigEndian.Uint16(nodes[i+24 : i+26])
+			node := Node{
+				NodeID:  nodeID,
+				Address: ip,
+				Port:    port,
+			}
+			d.Table.TableLock.Lock()
+			d.Table.Buckets[bucketNumber] = append(d.Table.Buckets[bucketNumber], node)
+			d.Table.TableLock.Unlock()
+		}
 	}
-
-	fmt.Printf("[INFO] DHT bootstrap complete.\n")
 }

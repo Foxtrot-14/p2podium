@@ -5,14 +5,13 @@ import (
 	"github.com/jackpal/bencode-go"
 )
 
-func parseJoinDHTResponse(res []byte) (DHTMessage, error) {
-	var msg DHTMessage
+func parseJoinDHTResponse(res []byte) (DHTResponse, error) {
+	var msg DHTResponse
 
 	reader := bytes.NewReader(res)
 	if err := bencode.Unmarshal(reader, &msg); err != nil {
-		return DHTMessage{}, err
+		return DHTResponse{}, err
 	}
 
 	return msg, nil
 }
-
