@@ -7,17 +7,19 @@ import (
 )
 
 type PeerRetriever interface {
+	GetPeerList() //Gateway into the package
 	JoinDHT()
-	GetPeerList()      //Gateway into the package
-	AnnouncePresence() //AnnouncePresence
-	ListenKRPC()       //A thread to listen for KRPC
-	HealthChecks()     //Periodically check nodes
+	HealthCheck()
+	GetPeers()
+	HandleNewNodes(nodes []Node)
+	AnnouncePresence()
+	Listen()
 }
 
 type Node struct {
 	NodeID   [20]byte
 	Address  net.IP
-	Port	 uint16
+	Port     uint16
 	LastSeen time.Time
 }
 

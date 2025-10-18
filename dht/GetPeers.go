@@ -3,71 +3,60 @@ package dht
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"time"
 
-	bencode "github.com/jackpal/bencode-go"
+	"github.com/jackpal/bencode-go"
 )
 
-func (d *DHT) JoinDHT() {
-	bootstrapNodes := []string{
-		"dht.libtorrent.org:25401",
-		"router.bittorrent.com:6881",
-		"router.utorrent.com:6881",
-		"dht.transmissionbt.com:6881",
-	}
-
-	for _, node := range bootstrapNodes {
+func (d *DHT) GetPeers(nodes []Node) {
+	//Recursively query to peers
+	for _, node := range nodes {
 		msg := DHTRequest{
 			T: generateTransactionID(),
 			Y: "q",
-			Q: "find_node",
+			Q: "get_peers",
 			A: map[string][]byte{
-				"id":     d.NodeID[:],
-				"target": d.NodeID[:],
+				"id":        d.NodeID[:],
+				"info_hash": d.InfoHash[:],
 			},
 		}
 
 		var buf bytes.Buffer
 		if err := bencode.Marshal(&buf, msg); err != nil {
 			log.Printf("[ERROR] bencode marshal: %v", err)
-			continue
 		}
 
-		raddr, err := net.ResolveUDPAddr("udp", node)
-		if err != nil {
-			log.Printf("[ERROR] resolve %s: %v", node, err)
-			continue
+		udpAddr := &net.UDPAddr{
+			IP:   node.Address,
+			Port: int(node.Port),
 		}
-
-		conn, err := net.DialUDP("udp", nil, raddr)
+		conn, err := net.DialUDP("udp", nil, udpAddr)
 		if err != nil {
-			log.Printf("[ERROR] dial %s: %v", node, err)
-			continue
+			log.Printf("[ERROR] dial %s: %v", udpAddr, err)
 		}
 
 		defer conn.Close()
 
-		_, err = conn.Write(buf.Bytes())
-		if err != nil {
-			log.Printf("[ERROR] send ping to %s: %v", node, err)
-			continue
+		if _, err = conn.Write(buf.Bytes()); err != nil {
+			log.Printf("[ERROR] send ping to %s: %v", udpAddr, err)
 		}
 
 		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		resp := make([]byte, 2048)
 		n, addr, err := conn.ReadFromUDP(resp)
 		if err != nil {
-			log.Printf("[WARN] no response from %s", node)
-			continue
+			log.Printf("[WARN] no response from %s: %v", udpAddr, err)
 		}
 
 		dhtRes, err := parseJoinDHTResponse(resp[:n])
 		if err != nil {
-			log.Printf("[ERROR] error while formatting response %s from %s", err.Error(), addr)
-			continue
+			log.Printf("[ERROR] parse response from %s: %v", addr, err)
 		}
+
+		fmt.Printf("This is the response:%v", dhtRes.R.Nodes)
 
 		nodes := []byte(dhtRes.R.Nodes)
 		for i := 0; i < len(nodes); i += 26 {
@@ -85,9 +74,7 @@ func (d *DHT) JoinDHT() {
 				Address: ip,
 				Port:    port,
 			}
-			d.Table.TableLock.Lock()
-			d.Table.Buckets[bucketNumber] = append(d.Table.Buckets[bucketNumber], node)
-			d.Table.TableLock.Unlock()
+			log.Printf("[INFO] Found Node:%v belongs to node:%v", node, bucketNumber)
 		}
 	}
 }
