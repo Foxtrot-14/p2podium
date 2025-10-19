@@ -13,7 +13,6 @@ func (d *DHT) GetPeerList() {
 		log.Printf("[ERROR] while calculating distance")
 	}
 
-	log.Printf("[INFO] distance found: %d", bucketNumber)
 	for bucketNumber >= 0 {
 		nodes, ok := d.Table.Buckets[bucketNumber]
 		if ok && len(nodes) > 0 {
@@ -30,6 +29,10 @@ func (d *DHT) GetPeerList() {
 
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])
+	for key, bucket := range d.Table.Buckets {
+		count := len(bucket)
+		log.Printf("[INFO] Bucket Number: %d has %d nodes\n", key, count)
+	}
 	// TODO:
 	//Annouce presence
 	// - Sleep for 10 mins before next refresh

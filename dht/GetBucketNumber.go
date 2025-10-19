@@ -25,4 +25,3 @@ func GetBucketNumber(target, source []byte) (int, error) {
 	bucket := 160 - msb
 	return bucket, nil
 }
-
