@@ -6,32 +6,43 @@ import (
 )
 
 func (d *DHT) HealthCheck() {
+	const maxConcurrentPings = 50
+
+	var globalWG sync.WaitGroup
+	sem := make(chan struct{}, maxConcurrentPings)
+
 	for bucketID, nodes := range d.Table.Buckets {
-		var wg sync.WaitGroup
-		activeNodesChan := make(chan Node, len(nodes))
+		globalWG.Add(1)
+		go func() {
+			defer globalWG.Done()
 
-		for i := range nodes {
-			node := nodes[i]
-			wg.Add(1)
-			go func(n Node) {
-				defer wg.Done()
-				if Ping(n, d.NodeID) {
-					n.LastSeen = time.Now()
-					activeNodesChan <- n
-				}
-			}(node)
-		}
+			activeNodes := make([]Node, 0, len(nodes))
+			var mu sync.Mutex
+			var wg sync.WaitGroup
 
-		wg.Wait()
-		close(activeNodesChan)
+			for _, node := range nodes {
+				sem <- struct{}{}
+				wg.Add(1)
 
-		activeNodes := make([]Node, 0, len(nodes))
-		for n := range activeNodesChan {
-			activeNodes = append(activeNodes, n)
-		}
+				go func(n Node) {
+					defer wg.Done()
+					defer func() { <-sem }()
 
-		d.Table.TableLock.Lock()
-		d.Table.Buckets[bucketID] = activeNodes
-		d.Table.TableLock.Unlock()
+					if Ping(n, d.NodeID) {
+						n.LastSeen = time.Now()
+						mu.Lock()
+						activeNodes = append(activeNodes, n)
+						mu.Unlock()
+					}
+				}(node)
+			}
+
+			wg.Wait()
+			d.Table.TableLock.Lock()
+			d.Table.Buckets[bucketID] = activeNodes
+			d.Table.TableLock.Unlock()
+		}()
 	}
+
+	globalWG.Wait()
 }

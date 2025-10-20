@@ -8,6 +8,7 @@ func (d *DHT) GetPeerList() {
 
 	//Ping All Nodes
 	d.HealthCheck()
+
 	bucketNumber, err := GetBucketNumber(d.NodeID[:], d.InfoHash[:])
 	if err != nil {
 		log.Printf("[ERROR] while calculating distance")
@@ -27,13 +28,9 @@ func (d *DHT) GetPeerList() {
 		}
 	}
 
-	log.Printf("[INFO] Closest Bucket to Torrent: %d\n", bucketNumber)
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])
-	for key, bucket := range d.Table.Buckets {
-		count := len(bucket)
-		log.Printf("[INFO] Bucket Number: %d has %d nodes\n", key, count)
-	}
+
 	// TODO:
 	//Annouce presence
 	// - Sleep for 10 mins before next refresh
