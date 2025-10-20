@@ -43,6 +43,9 @@ func (d *DHT) JoinDHT() {
 				Port:    uint16(raddr.Port),
 			})
 			if err != nil {
+				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+					return
+				}
 				log.Printf("[ERROR] while sending request to %s: %v", raddr, err)
 				return
 			}

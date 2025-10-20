@@ -27,6 +27,7 @@ func (d *DHT) GetPeerList() {
 		}
 	}
 
+	log.Printf("[INFO] Closest Bucket to Torrent: %d\n", bucketNumber)
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])
 	for key, bucket := range d.Table.Buckets {

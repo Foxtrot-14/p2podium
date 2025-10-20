@@ -2,6 +2,7 @@ package dht
 
 import (
 	"log"
+	"net"
 )
 
 func (d *DHT) GetPeers(nodes []Node) {
@@ -19,6 +20,9 @@ func (d *DHT) GetPeers(nodes []Node) {
 
 		resp, err := SendRequest(msg, node)
 		if err != nil {
+			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+				return
+			}
 			log.Printf("%s", err)
 			return
 		}

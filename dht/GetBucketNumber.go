@@ -17,11 +17,11 @@ func GetBucketNumber(target, source []byte) (int, error) {
 
 	distance := new(big.Int).SetBytes(xorResult[:])
 	msb := distance.BitLen()
-
 	if msb == 0 {
 		return 0, nil
 	}
 
-	bucket := 160 - msb
+	bucket := msb - 1
+
 	return bucket, nil
 }

@@ -1,9 +1,5 @@
 package dht
 
-import (
-	"log"
-)
-
 func Ping(node Node, myID [20]byte) bool {
 	msg := DHTRequest{
 		T: generateTransactionID(),
@@ -16,7 +12,6 @@ func Ping(node Node, myID [20]byte) bool {
 
 	resp, err := SendRequest(msg, node)
 	if err != nil {
-		log.Printf("%s", err)
 		return false
 	}
 

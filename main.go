@@ -100,6 +100,8 @@ func main() {
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
+
+	log.Printf("[INFO] NodeID: %x", nodeID)
 	var infoHash [20]byte
 	copy(infoHash[:], []byte(m.InfoHash))
 
