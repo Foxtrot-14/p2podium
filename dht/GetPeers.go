@@ -2,20 +2,20 @@ package dht
 
 import (
 	"encoding/binary"
-	"io"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
 
 func (d *DHT) GetPeers(initialNodes []Node) {
-	in := make(chan Node, 200)
-	out := make(chan Node, 200)
-	var wg sync.WaitGroup
+	in := make(chan Node, 100)
+	out := make(chan Node, 100)
+	visited := make(map[[20]byte]bool)
+	var visMu sync.Mutex
 
-	seen := make(map[[20]byte]bool)
-	var mu sync.Mutex
+	var wg sync.WaitGroup
 	var counter int
 
 	for _, n := range initialNodes {
@@ -26,7 +26,13 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for node := range in {
+
+			for {
+				node, ok := <-in
+				if !ok {
+					return
+				}
+
 				msg := DHTRequest{
 					T: generateTransactionID(),
 					Y: "q",
@@ -39,40 +45,56 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 
 				resp, err := SendRequest(msg, node)
 				if err != nil {
-					if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-						continue
-					} else if err == io.EOF {
+					if strings.Contains(err.Error(), "connection refused") ||
+						strings.Contains(err.Error(), "no route to host") {
 						continue
 					}
-					continue
 				}
 
-				nodes := []byte(resp.R.Nodes)
-				if len(nodes) > 0 {
-					for i := 0; i+26 <= len(nodes); i += 26 {
+				if len(resp.R.Nodes) > 0 {
+					raw := []byte(resp.R.Nodes)
+					var nodes []Node
+					for i := 0; i+26 <= len(raw); i += 26 {
 						var nodeID [20]byte
-						copy(nodeID[:], nodes[i:i+20])
-
-						mu.Lock()
-						if seen[nodeID] {
-							mu.Unlock()
-							continue
-						}
-						seen[nodeID] = true
-						counter++
-						log.Printf("[Counter] %d", counter)
-						mu.Unlock()
-
-						ip := net.IP(nodes[i+20 : i+24])
-						port := binary.BigEndian.Uint16(nodes[i+24 : i+26])
-						newNode := Node{NodeID: nodeID, Address: ip, Port: port}
-
-						out <- newNode
+						copy(nodeID[:], raw[i:i+20])
+						ip := net.IP(raw[i+20 : i+24])
+						port := binary.BigEndian.Uint16(raw[i+24 : i+26])
+						nodes = append(nodes, Node{NodeID: nodeID, Address: ip, Port: port})
 					}
+
+					closestNodes := ReturnClosestN(nodes, d.InfoHash, 3)
+					for _, c := range closestNodes {
+						visMu.Lock()
+						if !visited[c.NodeID] {
+							visited[c.NodeID] = true
+							counter++
+							visMu.Unlock()
+							out <- c
+						} else {
+							visMu.Unlock()
+						}
+					}
+
 				} else if len(resp.R.Values) > 0 {
 					for _, v := range resp.R.Values {
-						log.Printf("[PEER] %v", v)
+						raw := []byte(v)
+						if len(raw)%6 != 0 {
+							log.Printf("[WARN] Unexpected peer value length: %d", len(raw))
+							continue
+						}
+
+						type peer struct {
+							IP   net.IP
+							port uint16
+						}
+
+						for i := 0; i+6 <= len(raw); i += 6 {
+							ip := net.IP(raw[i : i+4])
+							port := binary.BigEndian.Uint16(raw[i+4 : i+6])
+							log.Printf("[PEER] %v", peer{IP: ip, port: port})
+						}
 					}
+					continue
 				}
 			}
 		}()
@@ -88,18 +110,15 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 		lastCount := 0
 		for {
 			time.Sleep(10 * time.Second)
-			mu.Lock()
 			if counter == lastCount {
+				log.Println("[STOP] No new nodes discovered. Stopping DHT crawl.")
 				close(in)
 				close(out)
-				mu.Unlock()
 				return
 			}
 			lastCount = counter
-			mu.Unlock()
 		}
 	}()
 
 	wg.Wait()
 }
-
