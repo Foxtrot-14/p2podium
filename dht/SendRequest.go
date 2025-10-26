@@ -29,7 +29,7 @@ func SendRequest(req DHTRequest, node Node) (DHTResponse, error) {
 		return DHTResponse{}, err
 	}
 
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	resp := make([]byte, 2048)
 	n, _, err := conn.ReadFromUDP(resp)
 	if err != nil {

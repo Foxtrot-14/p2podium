@@ -11,7 +11,7 @@ type PeerRetriever interface {
 	JoinDHT()
 	HealthCheck()
 	GetPeers()
-	HandleNewNodes(nodes []Node)
+	HandleNewNodes()
 	AnnouncePresence()
 	Listen()
 }
@@ -33,8 +33,8 @@ type DHT struct {
 	NodeID   [20]byte
 	Table    *RoutingTable
 	InfoHash [20]byte
-	Conn	 *net.UDPConn
 	Peers    []string
+	NodeC    chan Node
 	PeerLock *sync.Mutex
 	Done     chan struct{}
 	Errc     chan error

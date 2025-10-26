@@ -28,6 +28,8 @@ func (d *DHT) GetPeerList() {
 		}
 	}
 
+	go d.HandleNewNodes()
+
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])
 

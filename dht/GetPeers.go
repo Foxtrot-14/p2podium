@@ -2,6 +2,7 @@ package dht
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -10,9 +11,10 @@ import (
 )
 
 func (d *DHT) GetPeers(initialNodes []Node) {
-	in := make(chan Node, 1000)
-	out := make(chan Node, 1000)
+	in := make(chan Node, 1024)
+	out := make(chan Node, 1024)
 	visited := make(map[[20]byte]bool)
+	peerVisited := make(map[string]bool)
 	var visMu sync.Mutex
 
 	var wg sync.WaitGroup
@@ -24,11 +26,13 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 
 	go func() {
 		for newNode := range out {
-			in <- newNode
+			if len(in) < cap(in) {
+				in <- newNode
+			}
 		}
 	}()
 
-	for range 20 {
+	for range 60 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -68,36 +72,39 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 						nodes = append(nodes, Node{NodeID: nodeID, Address: ip, Port: port})
 					}
 
-					closestNodes := ReturnClosestN(nodes, d.InfoHash, 3)
+					closestNodes := ReturnClosestN(nodes, d.InfoHash, 10)
 					for _, c := range closestNodes {
 						visMu.Lock()
 						if !visited[c.NodeID] {
 							visited[c.NodeID] = true
 							counter++
 							visMu.Unlock()
-							out <- c
+							if len(out) < cap(out) {
+								out <- c
+							}
 						} else {
 							visMu.Unlock()
 						}
 					}
-
 				} else if len(resp.R.Values) > 0 {
 					for _, v := range resp.R.Values {
 						raw := []byte(v)
 						if len(raw)%6 != 0 {
-							log.Printf("[WARN] Unexpected peer value length: %d", len(raw))
 							continue
-						}
-
-						type peer struct {
-							IP   net.IP
-							port uint16
 						}
 
 						for i := 0; i+6 <= len(raw); i += 6 {
 							ip := net.IP(raw[i : i+4])
 							port := binary.BigEndian.Uint16(raw[i+4 : i+6])
-							log.Printf("[PEER] %v", peer{IP: ip, port: port})
+							ipPort := fmt.Sprintf("%s:%d", ip, port)
+							visMu.Lock()
+							if !peerVisited[ipPort] {
+								peerVisited[ipPort] = true
+								visMu.Unlock()
+								log.Printf("[PEER] %s", ipPort)
+							} else {
+								visMu.Unlock()
+							}
 						}
 					}
 					continue
