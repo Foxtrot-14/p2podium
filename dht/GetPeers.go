@@ -10,8 +10,8 @@ import (
 )
 
 func (d *DHT) GetPeers(initialNodes []Node) {
-	in := make(chan Node, 100)
-	out := make(chan Node, 100)
+	in := make(chan Node, 1000)
+	out := make(chan Node, 1000)
 	visited := make(map[[20]byte]bool)
 	var visMu sync.Mutex
 
@@ -22,7 +22,13 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 		in <- n
 	}
 
-	for range 10 {
+	go func() {
+		for newNode := range out {
+			in <- newNode
+		}
+	}()
+
+	for range 20 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -99,12 +105,6 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 			}
 		}()
 	}
-
-	go func() {
-		for newNode := range out {
-			in <- newNode
-		}
-	}()
 
 	go func() {
 		lastCount := 0
