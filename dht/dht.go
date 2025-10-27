@@ -23,6 +23,11 @@ type Node struct {
 	LastSeen time.Time
 }
 
+type Peer struct {
+	IP   net.IP
+	Port uint16
+}
+
 type RoutingTable struct {
 	Buckets   map[int][]Node
 	Peers     map[[20]byte][]string
@@ -33,7 +38,7 @@ type DHT struct {
 	NodeID   [20]byte
 	Table    *RoutingTable
 	InfoHash [20]byte
-	Peers    []string
+	Peers    []Peer
 	NodeC    chan Node
 	PeerLock *sync.Mutex
 	Done     chan struct{}

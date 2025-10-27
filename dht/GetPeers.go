@@ -81,6 +81,7 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 							visMu.Unlock()
 							if len(out) < cap(out) {
 								out <- c
+								// d.NodeC <- c
 							}
 						} else {
 							visMu.Unlock()
@@ -101,6 +102,7 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 							if !peerVisited[ipPort] {
 								peerVisited[ipPort] = true
 								visMu.Unlock()
+								d.Peers = append(d.Peers, )
 								log.Printf("[PEER] %s", ipPort)
 							} else {
 								visMu.Unlock()

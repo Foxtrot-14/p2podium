@@ -11,6 +11,7 @@ import (
 
 	"github.com/Foxtrot-14/p2podium/dht"
 	"github.com/Foxtrot-14/p2podium/magnet"
+	"github.com/Foxtrot-14/p2podium/scraper"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 	Errc = make(chan error)
 
 	// Shared peer list and mutex
-	PeerList []string
+	PeerList []dht.Peer
 	PeerLock sync.Mutex
 )
 
@@ -82,14 +83,15 @@ func main() {
 
 	// TODO: Obtain magnet link from user input
 	// TODO: Handle Seeder mode
+	// TODO: Add Context to Handle Failures
 	// Example magnet link for testing
-	//sample := "magnet:?xt=urn:btih:36E5B720080C36AA775963692F66FF51E937EDBD&dn=F1%20The%20Movie%202025%201080p%20HDTS%20x264-RGB&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Fpublic.popcorn-tracker.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce"
-	sample := "magnet:?xt=urn:btih:1217B75F5A089AFAF8F1717392606FFC90FD714E&dn=The%20Naked%20Gun%202025%20576p%20WEBRip%20x265%20AAC-SSN&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Fpublic.popcorn-tracker.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce"
+	sample := "magnet:?xt=urn:btih:DBBD336B73B72881B94CDC0D9759020615B27A6A&dn=One%20Piece%20Season%20%201%20Complete%20001%20-%20008%20720p%20HDTV%20x264%20%5Bi_c%5D&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce&tr=udp%3A%2F%2Ftracker.bittor.pw%3A1337%2Fannounce&tr=udp%3A%2F%2Fpublic.popcorn-tracker.org%3A6969%2Fannounce&tr=udp%3A%2F%2Ftracker.dler.org%3A6969%2Fannounce&tr=udp%3A%2F%2Fexodus.desync.com%3A6969&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce"
 	m, err := magnet.ParseMagnet(sample)
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to parse magnet link: %s", err)
 	}
 
+	log.Printf("[INFO] Display Name: %s", m.DisplayName)
 	log.Printf("[INFO] InfoHash: %s", m.InfoHash)
 
 	nodeID, err := dht.GenerateNodeID()
@@ -117,12 +119,12 @@ func main() {
 
 	go d.GetPeerList()
 
-	// sc := &Scraper{
-	// 	PeerList: PeerList,
-	// 	InfoHash: infoHash,
-	// }
+	sc := &scraper.Scraper{
+		PeerList: PeerList,
+		InfoHash: infoHash,
+	}
 
-	// go sc.StartScraper()
+	go sc.StartScraper()
 
 	select {
 	case <-Done:

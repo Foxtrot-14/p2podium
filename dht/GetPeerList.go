@@ -14,6 +14,7 @@ func (d *DHT) GetPeerList() {
 		log.Printf("[ERROR] while calculating distance")
 	}
 
+	//ATTENTION!!!
 	for bucketNumber >= 0 {
 		nodes, ok := d.Table.Buckets[bucketNumber]
 		if ok && len(nodes) > 0 {
@@ -28,7 +29,8 @@ func (d *DHT) GetPeerList() {
 		}
 	}
 
-	go d.HandleNewNodes()
+	// d.NodeC = make(chan Node)
+	// go d.HandleNewNodes()
 
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])

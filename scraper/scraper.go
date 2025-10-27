@@ -2,12 +2,15 @@ package scraper
 
 import (
 	"sync"
+
+	"github.com/Foxtrot-14/p2podium/dht"
 )
 
 type TorrentScraper interface {
 	StartScraper()
 	PieceDownloader()
 	WriteFile()
+	GetMetaData()
 }
 
 type Piece struct {
@@ -15,30 +18,16 @@ type Piece struct {
 	Data  []byte
 }
 
+type Torrent struct {
+}
+
 type Scraper struct {
-	PeerList         []string
+	PeerList         []dht.Peer
+	ActivePeers      []dht.Peer
 	InfoHash         [20]byte
+	Torrent          Torrent
 	PendingPieces    []int
 	DownloadedPieces []int
 	PieceChan        chan Piece
 	TableLock        sync.Mutex
 }
-
-func (s *Scraper) WriteFile() {
-	for piece := range s.PieceChan {
-		if verifyPiece(piece) {
-			writePieceToDisk(piece)
-		}
-	}
-}
-
-func downloadPieceFromPeer(peer string, index int) []byte {
-	return []byte{}
-}
-
-func verifyPiece(p Piece) bool {
-	return true
-}
-
-func writePieceToDisk(p Piece) {}
-
