@@ -1,13 +1,15 @@
 package magnet
 
 import (
+	"encoding/base32"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"strings"
 )
 
 type Magnet struct {
-	InfoHash    string
+	InfoHash    [20]byte
 	DisplayName string
 	Trackers    []string
 	WebSeeds    []string
@@ -19,19 +21,20 @@ func ParseMagnet(link string) (*Magnet, error) {
 	m := Magnet{
 		Extra: make(map[string][]string),
 	}
-	query := strings.Split(link, "?")
 
+	query := strings.SplitN(link, "?", 2)
 	if len(query) != 2 {
-		return nil, fmt.Errorf("invalid info magnet link")
+		return nil, fmt.Errorf("invalid magnet link: missing '?'")
 	}
 
 	params := strings.Split(query[1], "&")
-
 	for _, s := range params {
-		kv := strings.Split(s, "=")
+		kv := strings.SplitN(s, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
 
 		key := kv[0]
-
 		value, err := url.QueryUnescape(kv[1])
 		if err != nil {
 			value = kv[1]
@@ -40,7 +43,22 @@ func ParseMagnet(link string) (*Magnet, error) {
 		switch key {
 		case "xt":
 			if strings.HasPrefix(value, "urn:btih:") {
-				m.InfoHash = strings.TrimPrefix(value, "urn:btih:")
+				hashStr := strings.TrimPrefix(value, "urn:btih:")
+
+				var infohash []byte
+				if len(hashStr) == 40 {
+					infohash, err = hex.DecodeString(hashStr)
+				} else if len(hashStr) == 32 {
+					infohash, err = base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(hashStr))
+				} else {
+					err = fmt.Errorf("invalid infohash length: %d", len(hashStr))
+				}
+
+				if err != nil {
+					return nil, fmt.Errorf("failed to decode infohash: %v", err)
+				}
+
+				copy(m.InfoHash[:], infohash)
 			}
 
 		case "dn":
@@ -53,8 +71,8 @@ func ParseMagnet(link string) (*Magnet, error) {
 			m.ExactSource = value
 		default:
 			m.Extra[key] = append(m.Extra[key], value)
-
 		}
 	}
+
 	return &m, nil
 }
