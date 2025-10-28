@@ -38,9 +38,9 @@ func (d *DHT) HealthCheck() {
 			}
 
 			wg.Wait()
-			d.Table.TableLock.Lock()
+			d.Table.BucketLock[bucketID].Lock()
 			d.Table.Buckets[bucketID] = activeNodes
-			d.Table.TableLock.Unlock()
+			d.Table.BucketLock[bucketID].Unlock()
 		}()
 	}
 

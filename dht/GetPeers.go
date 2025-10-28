@@ -81,7 +81,7 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 							visMu.Unlock()
 							if len(out) < cap(out) {
 								out <- c
-								// d.NodeC <- c
+								go d.HandleNewNodes(c)
 							}
 						} else {
 							visMu.Unlock()

@@ -69,9 +69,10 @@ func (d *DHT) JoinDHT() {
 					Port:    port,
 				}
 
-				d.Table.TableLock.Lock()
+				d.Table.BucketLock[bucketNumber].Lock()
 				d.Table.Buckets[bucketNumber] = append(d.Table.Buckets[bucketNumber], node)
-				d.Table.TableLock.Unlock()
+				d.Table.BucketLock[bucketNumber].Unlock()
+
 			}
 		}(raddr)
 	}

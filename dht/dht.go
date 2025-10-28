@@ -29,9 +29,9 @@ type Peer struct {
 }
 
 type RoutingTable struct {
-	Buckets   map[int][]Node
-	Peers     map[[20]byte][]string
-	TableLock *sync.Mutex
+	Buckets    [160][]Node
+	BucketLock [160]sync.Mutex
+	Peers      map[[20]byte][]string
 }
 
 type DHT struct {
@@ -39,8 +39,6 @@ type DHT struct {
 	Table    *RoutingTable
 	InfoHash [20]byte
 	Peers    []Peer
-	NodeC    chan Node
-	PeerLock *sync.Mutex
 	Done     chan struct{}
 	Errc     chan error
 }

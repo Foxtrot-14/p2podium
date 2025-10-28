@@ -105,14 +105,12 @@ func main() {
 		NodeID:   nodeID,
 		InfoHash: m.InfoHash,
 		Peers:    PeerList,
-		PeerLock: &PeerLock,
 		Done:     Done,
 		Errc:     Errc,
 	}
 
 	d.Table = &dht.RoutingTable{
-		Buckets:   make(map[int][]dht.Node),
-		TableLock: new(sync.Mutex),
+		Peers: make(map[[20]byte][]string),
 	}
 
 	go d.GetPeerList()

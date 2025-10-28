@@ -16,8 +16,8 @@ func (d *DHT) GetPeerList() {
 
 	//ATTENTION!!!
 	for bucketNumber >= 0 {
-		nodes, ok := d.Table.Buckets[bucketNumber]
-		if ok && len(nodes) > 0 {
+		nodes := d.Table.Buckets[bucketNumber]
+		if len(nodes) > 0 {
 			break
 		} else {
 			bucketNumber--
@@ -28,9 +28,6 @@ func (d *DHT) GetPeerList() {
 			break
 		}
 	}
-
-	// d.NodeC = make(chan Node)
-	// go d.HandleNewNodes()
 
 	//GetPeer
 	d.GetPeers(d.Table.Buckets[bucketNumber])
