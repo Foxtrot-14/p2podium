@@ -18,12 +18,16 @@ type Piece struct {
 	Data  []byte
 }
 
+//16384 ~ 16KB
+
 type Torrent struct {
+
 }
 
 type Scraper struct {
-	PeerList         []dht.Peer
-	ActivePeers      []dht.Peer
+	PeerID			 [20]byte
+	PeerChan         chan dht.Peer
+	ActivePeers      map[string]int
 	InfoHash         [20]byte
 	Torrent          Torrent
 	PendingPieces    []int

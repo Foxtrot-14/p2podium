@@ -18,3 +18,4 @@ type Message struct {
 	ID      messageID
 	Payload []byte
 }
+

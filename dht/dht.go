@@ -38,7 +38,7 @@ type DHT struct {
 	NodeID   [20]byte
 	Table    *RoutingTable
 	InfoHash [20]byte
-	Peers    []Peer
+	PeerChan chan Peer
 	Done     chan struct{}
 	Errc     chan error
 }

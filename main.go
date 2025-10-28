@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/Foxtrot-14/p2podium/dht"
@@ -29,8 +28,7 @@ var (
 	Errc = make(chan error)
 
 	// Shared peer list and mutex
-	PeerList []dht.Peer
-	PeerLock sync.Mutex
+	PeerChan = make(chan dht.Peer, 100)
 )
 
 func init() {
@@ -94,7 +92,7 @@ func main() {
 	log.Printf("[INFO] Display Name: %s", m.DisplayName)
 	log.Printf("[INFO] InfoHash: %X", m.InfoHash)
 
-	nodeID, err := dht.GenerateNodeID()
+	nodeID, err := dht.GenerateID()
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
@@ -104,7 +102,7 @@ func main() {
 	d := &dht.DHT{
 		NodeID:   nodeID,
 		InfoHash: m.InfoHash,
-		Peers:    PeerList,
+		PeerChan: PeerChan,
 		Done:     Done,
 		Errc:     Errc,
 	}
@@ -115,9 +113,16 @@ func main() {
 
 	go d.GetPeerList()
 
+	peerId, err := dht.GenerateID()
+	if err != nil {
+		log.Printf("[ERROR] %v", err)
+	}
+
 	sc := &scraper.Scraper{
-		PeerList: PeerList,
-		InfoHash: m.InfoHash,
+		ActivePeers: make(map[string]int),
+		PeerChan:    PeerChan,
+		PeerID:      peerId,
+		InfoHash:    m.InfoHash,
 	}
 
 	go sc.StartScraper()

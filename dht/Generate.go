@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-func GenerateNodeID() ([20]byte, error) {
+func GenerateID() ([20]byte, error) {
 	var nodeID [20]byte
 	_, err := rand.Read(nodeID[:])
 	if err != nil {
