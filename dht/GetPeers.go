@@ -72,7 +72,7 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 						nodes = append(nodes, Node{NodeID: nodeID, Address: ip, Port: port})
 					}
 
-					closestNodes := ReturnClosestN(nodes, d.InfoHash, 10)
+					closestNodes := ReturnClosestN(nodes, d.InfoHash, 15)
 					for _, c := range closestNodes {
 						visMu.Lock()
 						if !visited[c.NodeID] {
@@ -122,9 +122,9 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 		for {
 			time.Sleep(10 * time.Second)
 			if counter == lastCount {
-				log.Println("[STOP] No new nodes discovered. Stopping DHT crawl.")
-				close(in)
-				close(out)
+				log.Println("[STOP] No new nodes discovered. Sleeping for 5 Seconds")
+				time.Sleep(5 * time.Second)
+				lastCount = 0
 				return
 			}
 			lastCount = counter

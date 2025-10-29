@@ -30,7 +30,7 @@ func (d *DHT) GetPeerList() {
 	}
 
 	//GetPeer
-	d.GetPeers(d.Table.Buckets[bucketNumber])
+	go d.GetPeers(d.Table.Buckets[bucketNumber])
 
 	// TODO:
 	//Annouce presence

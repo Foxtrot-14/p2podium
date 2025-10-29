@@ -21,6 +21,7 @@ func Handshake(peer dht.Peer, infohash [20]byte, peerID [20]byte) []byte {
 
 func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 	handshakeMsg := Handshake(peer, s.InfoHash, s.PeerID)
+
 	if _, err := conn.Write(handshakeMsg); err != nil {
 		return false
 	}
@@ -33,5 +34,6 @@ func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 	if string(resp[28:48]) != string(s.InfoHash[:]) {
 		return false
 	}
+
 	return true
 }
