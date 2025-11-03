@@ -1,0 +1,20 @@
+{
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@tailwindcss/vite": "^4.1.14",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.0.0-alpha.8",
+    "aceternity": "^1.0.1",
+    "react-loading-indicators": "^1.0.1",
+    "react-router-dom": "^7.9.4",
+    "shadcn": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "three": "^0.180.0",
+    "three-globe": "^2.44.1"
+  }
+}

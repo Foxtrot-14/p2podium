@@ -4,20 +4,19 @@ import (
 	"log"
 	"net"
 	"time"
-	"github.com/anacrolix/go-libutp"
 	"github.com/Foxtrot-14/p2podium/dht"
 )
 
-func (s *Scraper) GetMetaData(peer dht.Peer, sock *utp.Socket) {
+func (s *Scraper) GetMetaData(peer dht.Peer) {
 	
 	remoteAddr := &net.UDPAddr{
 		IP:   peer.IP,
 		Port: int(peer.Port),
 	}
 
-	log.Printf("[INFO] Connecting via uTP to %s:%d", peer.IP, peer.Port)
+	log.Printf("[INFO] Connecting via TCP to %s:%d", peer.IP, peer.Port)
 
-	conn, err := sock.Dial(remoteAddr.String())
+	conn, err := net.DialTimeout("tcp", remoteAddr.String(), 5*time.Second)
 	if err != nil {
 		log.Printf("[ERROR] uTP dial failed: %v", err)
 		return
