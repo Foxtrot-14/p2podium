@@ -5,44 +5,46 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"time"
 )
 
 func (d *DHT) GetPeers(initialNodes []Node) {
+	const workerCount = 60
+	const workerIdleTimeout = 6 * time.Second
+
 	in := make(chan Node, 1024)
 	out := make(chan Node, 1024)
-	visited := make(map[[20]byte]bool)
-	peerVisited := make(map[string]bool)
-	var visMu sync.Mutex
+	defer close(out)
 
-	var wg sync.WaitGroup
-	var counter int
-
-	for _, n := range initialNodes {
-		in <- n
-	}
+	var (
+		visited     = make(map[[20]byte]bool)
+		peerVisited = make(map[string]bool)
+		visMu       sync.Mutex
+		wg          sync.WaitGroup
+	)
 
 	go func() {
-		for newNode := range out {
-			if len(in) < cap(in) {
-				in <- newNode
+		for _, n := range initialNodes {
+			in <- n
+		}
+	}()
+
+	go func() {
+		for n := range out {
+			select {
+			case in <- n:
+			default:
+				// in is full, drop this node (or you can block if you prefer)
 			}
 		}
 	}()
 
-	for range 60 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for {
-				node, ok := <-in
-				if !ok {
-					return
-				}
-
+	worker := func() {
+		defer wg.Done()
+		for {
+			select {
+			case node := <-in:
 				msg := DHTRequest{
 					T: generateTransactionID(),
 					Y: "q",
@@ -55,10 +57,11 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 
 				resp, err := SendRequest(msg, node)
 				if err != nil {
-					if strings.Contains(err.Error(), "connection refused") ||
-						strings.Contains(err.Error(), "no route to host") {
-						continue
-					}
+					continue
+				}
+
+				if len(resp.R.Nodes) == 0 && len(resp.R.Values) == 0 {
+					continue
 				}
 
 				if len(resp.R.Nodes) > 0 {
@@ -72,64 +75,63 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 						nodes = append(nodes, Node{NodeID: nodeID, Address: ip, Port: port})
 					}
 
-					closestNodes := ReturnClosestN(nodes, d.InfoHash, 15)
-					for _, c := range closestNodes {
+					closest := ReturnClosestN(nodes, d.InfoHash, 15)
+					for _, c := range closest {
 						visMu.Lock()
 						if !visited[c.NodeID] {
 							visited[c.NodeID] = true
-							counter++
 							visMu.Unlock()
-							if len(out) < cap(out) {
-								out <- c
-								go d.HandleNewNodes(c)
+							select {
+							case out <- c:
+							default:
 							}
+							go d.HandleNewNodes(c)
 						} else {
 							visMu.Unlock()
 						}
 					}
-				} else if len(resp.R.Values) > 0 {
+				}
+
+				if len(resp.R.Values) > 0 {
 					for _, v := range resp.R.Values {
 						raw := []byte(v)
 						if len(raw)%6 != 0 {
 							continue
 						}
-
 						for i := 0; i+6 <= len(raw); i += 6 {
 							ip := net.IP(raw[i : i+4])
 							port := binary.BigEndian.Uint16(raw[i+4 : i+6])
 							ipPort := fmt.Sprintf("%s:%d", ip, port)
+
 							visMu.Lock()
 							if !peerVisited[ipPort] {
 								peerVisited[ipPort] = true
 								visMu.Unlock()
-								d.PeerChan <- Peer{
-									IP:   ip,
-									Port: port,
+								select {
+								case d.PeerChan <- Peer{IP: ip, Port: port}:
+								default:
 								}
 							} else {
 								visMu.Unlock()
 							}
 						}
 					}
-					continue
 				}
-			}
-		}()
-	}
 
-	go func() {
-		lastCount := 0
-		for {
-			time.Sleep(10 * time.Second)
-			if counter == lastCount {
-				log.Println("[STOP] No new nodes discovered. Sleeping for 5 Seconds")
-				time.Sleep(5 * time.Second)
-				lastCount = 0
+			case <-time.After(workerIdleTimeout):
 				return
 			}
-			lastCount = counter
 		}
-	}()
+	}
+
+	wg.Add(workerCount)
+	for range workerCount {
+		go worker()
+	}
 
 	wg.Wait()
+
+	close(in)
+
+	log.Printf("[DHT] GetPeers finished: discovered %d nodes, %d peers", len(visited), len(peerVisited))
 }

@@ -1,9 +1,11 @@
 package scraper
 
 import (
+	"bytes"
 	"io"
 	"log"
 	"net"
+	"time"
 
 	"github.com/Foxtrot-14/p2podium/dht"
 )
@@ -21,18 +23,36 @@ func Handshake(infohash [20]byte, peerID [20]byte) []byte {
 }
 
 func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
 	handshakeMsg := Handshake(s.InfoHash, s.PeerID)
-
 	if _, err := conn.Write(handshakeMsg); err != nil {
+		// log.Printf("[ERROR] Failed to send handshake: %v", err)
 		return false
 	}
 
-	resp := make([]byte, 68)
-	if _, err := io.ReadFull(conn, resp); err != nil {
+	pstrlen := make([]byte, 1)
+	if _, err := io.ReadFull(conn, pstrlen); err != nil {
+		// log.Printf("[ERROR] Failed to read handshake length: %v", err)
 		return false
 	}
 
-	log.Printf("[INFO] Response from handshake: %q", resp[:])
+	total := int(pstrlen[0]) + 49 - 1
+	resp := make([]byte, total)
+	resp[0] = pstrlen[0]
 
-	return string(resp[28:48]) == string(s.InfoHash[:])
+	if _, err := io.ReadFull(conn, resp[1:]); err != nil {
+		// log.Printf("[ERROR] Failed to read handshake response: %v", err)
+		return false
+	}
+
+	// log.Printf("[INFO] Response from handshake: %q", resp)
+
+	if !bytes.Equal(resp[28:48], s.InfoHash[:]) {
+		// log.Printf("[WARN] Infohash mismatch from peer %v", peer)
+		return false
+	}
+
+	log.Printf("[INFO] Handshake successful with %v", peer)
+	return true
 }

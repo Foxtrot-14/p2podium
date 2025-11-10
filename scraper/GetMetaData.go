@@ -14,11 +14,9 @@ func (s *Scraper) GetMetaData(peer dht.Peer) {
 		Port: int(peer.Port),
 	}
 
-	log.Printf("[INFO] Connecting via TCP to %s:%d", peer.IP, peer.Port)
-
 	conn, err := net.DialTimeout("tcp", remoteAddr.String(), 5*time.Second)
 	if err != nil {
-		log.Printf("[ERROR] uTP dial failed: %v", err)
+		// log.Printf("[ERROR] uTP dial failed: %v", err)
 		return
 	}
 
@@ -27,7 +25,7 @@ func (s *Scraper) GetMetaData(peer dht.Peer) {
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 
 	if !s.SendHandshake(conn, peer) {
-		log.Printf("[WARN] Handshake failed with %s", peer.IP)
+		// log.Printf("[WARN] Handshake failed with %s", peer.IP)
 		return
 	}
 
