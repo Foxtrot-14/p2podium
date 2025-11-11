@@ -120,7 +120,6 @@ func main() {
 	}
 
 	sc := &scraper.Scraper{
-		ActivePeers: make(map[string]int),
 		PeerChan:    PeerChan,
 		PeerID:      peerId,
 		InfoHash:    m.InfoHash,

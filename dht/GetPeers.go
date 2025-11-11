@@ -10,7 +10,6 @@ import (
 )
 
 func (d *DHT) GetPeers(initialNodes []Node) {
-	const workerCount = 60
 	const workerIdleTimeout = 6 * time.Second
 
 	in := make(chan Node, 1024)
@@ -124,8 +123,8 @@ func (d *DHT) GetPeers(initialNodes []Node) {
 		}
 	}
 
-	wg.Add(workerCount)
-	for range workerCount {
+	wg.Add(60)
+	for range 60 {
 		go worker()
 	}
 
