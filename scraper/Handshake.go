@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"github.com/Foxtrot-14/p2podium/dht"
-	"log"
 	"net"
 	"time"
 )
@@ -19,15 +18,12 @@ func (s *Scraper) Handshake(peer dht.Peer) {
 		return
 	}
 
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	conn.SetDeadline(time.Now().Add(15 * time.Second))
 
 	if !s.SendHandshake(conn, peer) {
-		log.Printf("[WARN] Handshake failed with %s", peer.IP)
 		conn.Close()
 		return
 	}
-
-	log.Printf("[INFO] Handshake successful with %s", peer.IP)
 
 	//Check if metadata is already fetched
 	if s.Torrent.Root == nil && s.metaRequested.CompareAndSwap(false, true) {

@@ -26,13 +26,11 @@ func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 
 	handshakeMsg := Handshake(s.InfoHash, s.PeerID)
 	if _, err := conn.Write(handshakeMsg); err != nil {
-		// log.Printf("[ERROR] Failed to send handshake: %v", err)
 		return false
 	}
 
 	pstrlen := make([]byte, 1)
 	if _, err := io.ReadFull(conn, pstrlen); err != nil {
-		// log.Printf("[ERROR] Failed to read handshake length: %v", err)
 		return false
 	}
 
@@ -41,14 +39,10 @@ func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 	resp[0] = pstrlen[0]
 
 	if _, err := io.ReadFull(conn, resp[1:]); err != nil {
-		// log.Printf("[ERROR] Failed to read handshake response: %v", err)
 		return false
 	}
 
-	// log.Printf("[INFO] Response from handshake: %q", resp)
-
 	if !bytes.Equal(resp[28:48], s.InfoHash[:]) {
-		// log.Printf("[WARN] Infohash mismatch from peer %v", peer)
 		return false
 	}
 

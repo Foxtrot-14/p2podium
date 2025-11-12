@@ -8,7 +8,7 @@ import (
 )
 
 type TorrentScraper interface {
-	StartScraper()
+	StartScraper() //Gateway
 	PieceDownloader()
 	WriteFile()
 	HandShake()
@@ -48,4 +48,11 @@ type Scraper struct {
 	DownloadedPieces []int
 	PieceChan        chan Piece
 	TableLock        sync.Mutex
+}
+
+type ExtendedHandshake struct {
+	M            map[string]int `bencode:"m"`
+	MetadataSize int            `bencode:"metadata_size"`
+	Version      string         `bencode:"v"`
+	ReqQ         int            `bencode:"reqq"`
 }
