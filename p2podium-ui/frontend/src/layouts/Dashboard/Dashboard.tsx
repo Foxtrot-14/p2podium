@@ -1,7 +1,7 @@
 import { usePathname, useRouter } from "../../routes/hooks/use-pathname";
 import Left from "../../assets/icons/chevron-left.svg";
+import Header from "./components/NavBar";
 import { motion } from "framer-motion";
-import NavBar from "./components/NavBar";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -37,10 +37,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           />
         </motion.button>
       )}
-      <NavBar/>
-
+      <Header/>
       {children}
     </article>
   );
 }
-

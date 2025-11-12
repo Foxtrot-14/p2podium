@@ -4,7 +4,6 @@ import { Outlet, useRoutes } from "react-router-dom"
 import DashboardLayout from "../layouts/Dashboard/Dashboard";
 
 export const Homepage = lazy(()=>import("../pages/Home/Home"))
-export const Leaderboard = lazy(()=>import("../pages/Leaderboard/Leaderboard"))
 
 export default function Router() {
   const loading = <Atom color="#F90627" size="large"/>
@@ -20,7 +19,6 @@ export default function Router() {
       ),
       children: [
         { element: <Homepage/>, index: true },
-        { path: "leader", element: <Leaderboard/>},
       ]
     }
   ]);
