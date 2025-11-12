@@ -71,41 +71,65 @@ func readExtendedHandshake(conn net.Conn) (*ExtendedHandshake, error) {
 	return &handshake, nil
 }
 
+func readNextMessage(conn net.Conn) ([]byte, error) {
+	var length int32
+	if err := binary.Read(conn, binary.BigEndian, &length); err != nil {
+		return nil, fmt.Errorf("failed to read message length: %w", err)
+	}
+
+	if length <= 0 || length > 64*1024 {
+		return nil, fmt.Errorf("invalid message length: %d", length)
+	}
+
+	buf := make([]byte, length)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		return nil, fmt.Errorf("failed to read message body: %w", err)
+	}
+
+	return buf, nil
+}
+
 func (s *Scraper) RequestMetaData(conn net.Conn) {
-	time.Sleep(100 * time.Millisecond)
-
-	req, err := createExtendedHandshake()
-	if err != nil {
-		log.Printf("[ERROR] while creating extended handshake")
-		return
-	}
-
-	_, err = conn.Write(req)
-	if err != nil {
-		log.Printf("[ERROR] while sending request")
-		return
-	}
-	log.Println("[DEBUG] Sent extended handshake, waiting for response...")
+	req, _ := createExtendedHandshake()
+	conn.Write(req)
 
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 
-	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		log.Printf("[ERROR] failed to read raw response: %v", err)
-		return
-	}
+	for {
+		msg, err := readNextMessage(conn)
+		if err != nil {
+			s.metaRequested.CompareAndSwap(true, false)
+			log.Printf("[ERROR] from %s: %v", conn.RemoteAddr(), err)
+			return
+		}
 
-	log.Printf("[DEBUG] Received %d bytes", n)
-	log.Printf("[DEBUG] Raw response bytes: %x", buf[:n])
-	log.Printf("[DEBUG] Raw response string: %q", string(buf[:n]))
-	// resp, err := readExtendedHandshake(conn)
-	// if err != nil {
-	// 	log.Printf("[ERROR] failed to read extended handshake response: %v", err)
-	// 	return
-	// }
-	//
-	// log.Printf("[INFO] Peer supports ut_metadata: %d", resp.M["ut_metadata"])
-	// log.Printf("[INFO] Metadata size: %d bytes", resp.MetadataSize)
-	// log.Printf("[INFO] Client version: %s", resp.Version)
+		if len(msg) < 2 {
+			continue
+		}
+
+		id := msg[0]
+		if id != 20 {
+			log.Printf("[DEBUG] Skipping message id=%d, len=%d", id, len(msg))
+			s.metaRequested.CompareAndSwap(true, false)
+			return
+		}
+
+		extID := msg[1]
+		if extID == 0 {
+			var handshake ExtendedHandshake
+			if err := bencode.Unmarshal(bytes.NewReader(msg[2:]), &handshake); err != nil {
+				log.Printf("[ERROR] bencode decode failed: %v", err)
+				continue
+			}
+
+			if _, ok := handshake.M["ut_pex"]; ok {
+				s.metaRequested.CompareAndSwap(true, false)
+				return
+			}
+			log.Printf("[INFO] Got Extended Handshake: %+v", handshake)
+		} else {
+			log.Printf("[DEBUG] Got extended msg %d, skipping", extID)
+		}
+	}
+	//Not reponsponding to Extended Handshake
 }

@@ -3,6 +3,7 @@ package scraper
 import (
 	"bytes"
 	"io"
+	"log"
 	"net"
 	"time"
 
@@ -34,7 +35,7 @@ func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 		return false
 	}
 
-	total := int(pstrlen[0]) + 49 - 1
+	total := int(pstrlen[0]) + 49
 	resp := make([]byte, total)
 	resp[0] = pstrlen[0]
 
@@ -43,6 +44,11 @@ func (s *Scraper) SendHandshake(conn net.Conn, peer dht.Peer) bool {
 	}
 
 	if !bytes.Equal(resp[28:48], s.InfoHash[:]) {
+		return false
+	}
+
+	if resp[25]&0x10 == 0 {
+		log.Printf("[DEBUG] peer %s does not support extension protocol", peer.IP.String())
 		return false
 	}
 
